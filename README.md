@@ -1,13 +1,26 @@
 # osTicket-alert-plugin 
 
 ==============
-This plugin sends alerts to users when an agent or system assigns a ticket to another agent or claims a ticket.
+
+This plugin sends alerts to users when an agent or system assigns a ticket to another agent or claims a ticket (works with filters).
 
 Info
 ------
 This plugin was designed/tested with osTicket-1.10.1 to 1.14.3
 Still in beta and has garbage code its works for me and I need others to test and let me know what updates it may need.
+
+What this plugin does is quite simple.
+Every time an Agent assigns a ticket a message is sent to the user.
+It updates the ticket either by note or message (can be the assigned agent or another account)
+Can change the ticket status
+Send custom message to User and fully supports osticket variables.
+Ability to chose what Departments that will trigger an alert.
 ![Screenshot](Plugin-Screenshot_232.png)
+
+## Configuration
+Create a custom Canned Response for that the system will send to the user
+Add the custom subject
+
 ## Install
 --------
 0. Clone this repo or download the zip file and place the contents into your `include/plugins` folder.
