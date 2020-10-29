@@ -7,7 +7,7 @@ Info
 ------
 This plugin was designed/tested with osTicket-1.10.1 to 1.14.3
 Still in beta and has garbage code its works for me and I need others to test and let me know what updates it may need.
-
+![alt text](https://github.com/[username]/[reponame]/blob/[branch]/Plugin-Screenshot_232.png?raw=true)
 ## Install
 --------
 0. Clone this repo or download the zip file and place the contents into your `include/plugins` folder.
