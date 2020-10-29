@@ -1,11 +1,12 @@
-# osTicket-alert-plugin
+# osTicket-alert-plugin 
 
 ==============
 This plugin sends alerts to users when an agent or system assigns a ticket to another agent or claims a ticket.
 
 Info
 ------
-This plugin was designed/tested with osTicket-1.10.1 to 1.12.1
+This plugin was designed/tested with osTicket-1.10.1 to 1.14.3
+Still in beta and has garbage code its works for me and I need others to test and let me know what updates it may need.
 
 ## Install
 --------
