@@ -44,8 +44,8 @@ class AssignAlertPlugin extends Plugin
 			$uid = $object->ht {'uid'};
 
 		if (get_class($object) === "ThreadEvent" && $event_id == '4' && !empty($uid)) {
-			$this->log('onModelCreated', json_encode($object));
-			$this->log('onModelcfg', json_encode($cfg));
+			//$this->log('onModelCreated', json_encode($object));
+			//$this->log('onModelcfg', json_encode($cfg));
 			$ticket_id = self::find_ticket(
 				$object->ht {
 					'id'
