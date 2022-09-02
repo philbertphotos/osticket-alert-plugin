@@ -3,7 +3,7 @@
  * Description of plugin
  * @author Joseph Philbert <joe@philbertphotos.com>
  * @license http://opensource.org/licenses/MIT
- * @version 1.2
+ * @version 1.4
  */
  // load various classes
 foreach ([
