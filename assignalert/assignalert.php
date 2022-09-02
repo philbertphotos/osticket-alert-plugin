@@ -3,18 +3,11 @@
  * Description of plugin
  * @author Joseph Philbert <joe@philbertphotos.com>
  * @license http://opensource.org/licenses/MIT
- * @version 0.1
+ * @version 1.2
  */
+ // load various classes
 foreach ([
-	'canned',
-	'format',
-	'list',
-	'orm',
-	'misc',
-	'plugin',
-	'ticket',
-	'signal',
-	'staff'
+	'canned',	'format',	'list',	'orm',	'misc',	'plugin',	'ticket',	'signal',	'staff'
 ] as $c) {
 	require_once INCLUDE_DIR . "class.$c.php";
 }
@@ -34,18 +27,17 @@ class AssignAlertPlugin extends Plugin
 	public function bootstrap()
 	{
 		self::$config = self::getConfig();
-		Signal::connect('model.created', array($this, 'onModelCreated'));
+		Signal::connect('model.created', array($this, 'assignModeCheck'));
+		
 	}
 
-	function onModelCreated($object)
+	function assignModeCheck($object)
 	{
 		global $ost, $thisstaff, $cfg;
 			$event_id = $object->ht {'event_id'};
 			$uid = $object->ht {'uid'};
 
 		if (get_class($object) === "ThreadEvent" && $event_id == '4' && !empty($uid)) {
-			//$this->log('onModelCreated', json_encode($object));
-			//$this->log('onModelcfg', json_encode($cfg));
 			$ticket_id = self::find_ticket(
 				$object->ht {
 					'id'
@@ -54,14 +46,13 @@ class AssignAlertPlugin extends Plugin
 			$indept = false;
 				// Fetch ticket as an Object
 			$ticket = Ticket::lookup($ticket_id);
-			//$created = str_replace("-", "\\", $ticket->ht{'created'});
 			$created = $ticket->ht{'created'};
 
 				//If the the ticket was just created then there is a chance its the Filter or Agent we can skip.
 			if (strtotime($created) > time() - (60*1))
 				return;
 			
-			$this->log('onModelTicket', json_encode($ticket));
+			//$this->log('onModelTicket', json_encode($ticket));
 
 			$departID = self::$config->get('alert_dept');
 		
@@ -78,22 +69,22 @@ class AssignAlertPlugin extends Plugin
 			$admin_subject = self::$config->get('alert-subject');
 
 			if (is_numeric($admin_canned) && $admin_canned) {
-                        // We have a valid Canned_Response ID, fetch the actual Canned:
+                    // We have a valid Canned_Response ID, fetch the actual Canned:
 				$admin_canned = Canned::lookup($admin_canned);
 				if ($admin_canned instanceof Canned) {
-                            // Got a real Canned object, let's pull the body/string:
+                    // Got a real Canned object, let's pull the body/string:
 					$admin_canned = $admin_canned->getFormattedResponse('html');
 				}
 			}
 
-                    // Get the robot for this group
+                // Get the robot for this group
 			$robot = self::$config->get('alert-account');
 			$robot = ($robot > 0) ? $robot = Staff::lookup($robot) : null;
 
 			switch (self::$config->get('alert-choice')) {
 				case '0':
-					if (self::$config->get('debug'))
-						$this->log("Assigned Message", $this->updateVars($ticket, $admin_canned) . " " . $ticket->getSubject());
+					//if (self::$config->get('debug'))
+						$this->log("Assigned Message", $this->updateVars($ticket, $admin_canned) . "<div> subject: " . $ticket->getSubject() . "</div><div> id: " . $ticket->getID() . "</div>");
 					break;
 				case '1':
 					$ticket->LogNote(__('Notification'), __($this->updateVars($ticket, $admin_canned)), self::PLUGIN_NAME, FALSE);
@@ -107,7 +98,6 @@ class AssignAlertPlugin extends Plugin
 			$status = self::$config->get('alert-status');
 			if (!$status == 0){
              $new_status = TicketStatus::lookup(array('id' => (int) $status));
-				//change_status($ticket, $new_status)
 			}
 
 		}
@@ -122,48 +112,6 @@ class AssignAlertPlugin extends Plugin
 			$ids = $i['object_id'];
 		}
 		return $ids;
-	}
-
-	/**
-     * This is the part that actually "Closes" the tickets Well, depending on the
-     * admin settings I mean. Could use $ticket->setStatus($closed_status)
-     * function however, this gives us control over _how_ it is closed. preventing
-     * accidentally making any logged-in staff associated with the closure, which
-     * is an issue with AutoCron
-     *
-     * @param Ticket $ticket
-     * @param TicketStatus $new_status
-     */
-	private function change_status(Ticket $ticket, TicketStatus $new_status)
-	{
-		if (self::DEBUG) {
-			error_log(
-				"Setting status " . $new_status->getState()
-					. " for ticket {$ticket->getId()}::{$ticket->getSubject()}"
-			);
-		}
-
-			// Start by setting the last update and closed timestamps to now
-		$ticket->closed = $ticket->lastupdate = SqlFunction::NOW();
-
-			// Remove any duedate or overdue flags
-		$ticket->duedate = null;
-		$ticket->clearOverdue(FALSE); // flag prevents saving, we'll do that
-			// Post an Event with the current timestamp.
-		$ticket->logEvent(
-			$new_status->getState(),
-			[
-				'status' => [
-					$new_status->getId(),
-					$new_status->getName()
-				]
-			]
-		);
-			// Actually apply the new "TicketStatus" to the Ticket.
-		$ticket->status = $new_status;
-
-			// Save it, flag prevents it refetching the ticket data straight away (inefficient)
-		$ticket->save(FALSE);
 	}
 
 	/**
@@ -226,8 +174,12 @@ class AssignAlertPlugin extends Plugin
 
 		$msg = $this->updateVars($ticket, $body);
 		$subject = $this->updateVars($ticket, $subject);
-
-		//self::logger('info', 'onModelFrom', json_encode($from_address));
+		
+		if ($this->getConfig()->get('debug')){
+			//self::logger('info', 'assignalert - info', json_encode($from_address));
+			self::logger('info', 'assignalert - subject', $subject);
+		}
+		
 		try {
 			$mailer = new Mailer();
 			$mailer->setFromAddress($this->FromMail()[$from_address]);
@@ -279,7 +231,7 @@ class AssignAlertPlugin extends Plugin
 	{
 		global $ost;
 		if ($this->getConfig()->get('debug') && $message) {
-			$ost->logWarning($title, $message, false);
+			$ost->logInfo($title, $message, false);
 		}
 	}
 
