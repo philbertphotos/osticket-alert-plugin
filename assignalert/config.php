@@ -42,7 +42,6 @@ class AssignedAgentConfig extends PluginConfig
 		$sql = 'SELECT email_id,email,name,smtp_active FROM ' . EMAIL_TABLE . ' email ORDER by name';
 		if (($res = db_query($sql)) && db_num_rows($res)) {
 			while (list($id, $email, $name, $smtp) = db_fetch_row($res)) {
-                //$selected=($info['email_id'] && $id==$info['email_id'])?'selected="selected"':'';
 				if ($name) $email = Format::htmlchars("$name <$email>");
 				if ($smtp) $email .= ' (' . __('SMTP') . ')';
 				$frommail[$id] = $email;
