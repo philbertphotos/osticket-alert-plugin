@@ -7,16 +7,21 @@
  */
  // load various classes
 foreach ([
-	'canned',	'format',	'list',	'orm',	'misc',	'plugin',	'ticket',	'signal',	'staff'
+	'plugin','canned','email','ticket','staff'
 ] as $c) {
 	require_once INCLUDE_DIR . "class.$c.php";
+
+require_once(INCLUDE_DIR . 'class.signal.php');
+require_once(INCLUDE_DIR . 'class.osticket.php');
+require_once(INCLUDE_DIR . 'class.config.php');
+require_once(INCLUDE_DIR . 'class.format.php');
+
 }
 require_once 'config.php';
 
 class AssignAlertPlugin extends Plugin
 {
 	var $config_class = 'AssignedAgentConfig';
-	static private $config;
 	/**
      * The name that appears in threads as: Closer Plugin.
      *
@@ -26,47 +31,44 @@ class AssignAlertPlugin extends Plugin
 
 	public function bootstrap()
 	{
-		self::$config = self::getConfig();
+		$config = $this->getConfig();
 		Signal::connect('model.created', array($this, 'assignModeCheck'));
 		
 	}
 
 	function assignModeCheck($object)
 	{
-		global $ost, $thisstaff, $cfg;
-			$event_id = $object->ht {'event_id'};
-			$uid = $object->ht {'uid'};
+		global $ost, $cfg;
+			$event_id = $object->ht['event_id'];
+			$uid = $object->ht['uid'];
 
 		if (get_class($object) === "ThreadEvent" && $event_id == '4' && !empty($uid)) {
 			$ticket_id = self::find_ticket(
-				$object->ht {
-					'id'
-				});			
+				$object->ht['id']);			
 
-			$indept = false;
 				// Fetch ticket as an Object
 			$ticket = Ticket::lookup($ticket_id);
-			$created = $ticket->ht{'created'};
+			$created = $ticket->ht['created'];
 
 				//If the the ticket was just created then there is a chance its the Filter or Agent we can skip.
 			if (strtotime($created) > time() - (60*1))
-				return;
-			
-			//$this->log('onModelTicket', json_encode($ticket));
-
-			$departID = self::$config->get('alert_dept');
+			//$ost->logWarning('assign-info', json_encode($config), false);
+			error_log("test: " . json_encode($config));
+			$departID = $this->getConfig()->get('alert_dept');
 		
-				//If department not set then skip.
+			//If department not set then skip.
+			//if (|| ($id == 0  || $id = null)){
+			//} else {
 			foreach ($departID as $id) {
-				if ($ticket->getDeptId() == $id || $id == 0) {
-					$indept = true;
+				if ($ticket->getDeptId() == $id) {
 					continue;
 				}
 			}
+			//}
 
-			$admin_reply = self::$config->get('alert-msg');
-			$admin_canned = self::$config->get('alert-canned');
-			$admin_subject = self::$config->get('alert-subject');
+			$admin_reply = $this->getConfig()->get('alert-msg');
+			$admin_canned = $this->getConfig()->get('alert-canned');
+			$admin_subject = $this->getConfig()->get('alert-subject');
 
 			if (is_numeric($admin_canned) && $admin_canned) {
                     // We have a valid Canned_Response ID, fetch the actual Canned:
@@ -78,12 +80,11 @@ class AssignAlertPlugin extends Plugin
 			}
 
                 // Get the robot for this group
-			$robot = self::$config->get('alert-account');
+			$robot = $this->getConfig()->get('alert-account');
 			$robot = ($robot > 0) ? $robot = Staff::lookup($robot) : null;
 
-			switch (self::$config->get('alert-choice')) {
+			switch ($this->getConfig()->get('alert-choice')) {
 				case '0':
-					//if (self::$config->get('debug'))
 						$this->log("Assigned Message", $this->updateVars($ticket, $admin_canned) . "<div> subject: " . $ticket->getSubject() . "</div><div> id: " . $ticket->getID() . "</div>");
 					break;
 				case '1':
@@ -95,7 +96,7 @@ class AssignAlertPlugin extends Plugin
 			} 
 
 			$this->sendMailAlert($ticket, $admin_subject, $admin_reply);
-			$status = self::$config->get('alert-status');
+			$status = $this->getConfig()->get('alert-status');
 			if (!$status == 0){
              $new_status = TicketStatus::lookup(array('id' => (int) $status));
 			}
@@ -176,14 +177,12 @@ class AssignAlertPlugin extends Plugin
 		$subject = $this->updateVars($ticket, $subject);
 		
 		if ($this->getConfig()->get('debug')){
-			//self::logger('info', 'assignalert - info', json_encode($from_address));
-			self::logger('info', 'assignalert - subject', $subject);
+			$ost->logWarning('assignalert - subject', $subject, false);
 		}
 		
 		try {
-			$mailer = new Mailer();
-			$mailer->setFromAddress($this->FromMail()[$from_address]);
-			$mailer->send($to_address, $subject, $msg);
+			$email=Email::lookup($from_address);
+			$email->send($to_address, $subject, $msg);
 		} catch (\Exception $e) {
 			$ost->logError('Mail alert posting issue!', $e->getMessage(), true);
 		}
@@ -193,7 +192,7 @@ class AssignAlertPlugin extends Plugin
 	function FromMail()
 	{
 		$frommail = array();
-		$sql = 'SELECT email_id,email,name,smtp_active FROM ' . EMAIL_TABLE . ' email ORDER by name';
+		$sql = 'SELECT email_id,email,name FROM ' . EMAIL_TABLE . ' email ORDER by name';
 		if (($res = db_query($sql)) && db_num_rows($res)) {
 			while (list($id, $email, $name, $smtp) = db_fetch_row($res)) {
                 //$selected=($info['email_id'] && $id==$info['email_id'])?'selected="selected"':'';
@@ -248,54 +247,5 @@ class AssignAlertPlugin extends Plugin
 
 		];
 		return $ticket->replaceVars($text, $variables);
-	}
-
-	/**
-     * Write information to system LOG
-     *
-     */
-	function logger($priority, $title, $message)
-	{
-        // if (!empty(self::getConfig()->get('debug-choice')) &&  self::getConfig()->get('debug-choice')) {
-			//$array = json_decode(json_encode($response->response->docs), true);
-		if (is_array($message) || is_object($message)) {
-			$msg = json_decode(json_encode($message), true);
-			$message = "array:" . json_encode($msg);
-			if (is_object($message)) $message = "object:" . self::toArray($message);
-		} else {
-			$message = $message;
-		}
-            // }
-            // We are providing only 3 levels of logs. Windows style.
-		switch ($priority) {
-			case 1:
-			case LOG_EMERG:
-			case LOG_ALERT:
-			case LOG_CRIT:
-			case LOG_ERR:
-				$level = 1; //Error
-				break;
-
-			case 2:
-			case LOG_WARN:
-			case LOG_WARNING:
-				$level = 2; //Warning
-				break;
-
-			case 3:
-			case LOG_NOTICE:
-			case LOG_INFO:
-			case LOG_DEBUG:
-			default:
-				$level = 3; //Debug
-		}
-		$loglevel = array(
-			1 => 'Error',
-			'Warning',
-			'Debug'
-		);
-            // Save log based on system log level settings.
-		$sql = 'INSERT INTO ' . SYSLOG_TABLE . ' SET created=NOW(), updated=NOW() ' . ',title=' . db_input(Format::sanitize($title, true)) . ',log_type=' . db_input($loglevel[$level]) . ',log=' . db_input(Format::sanitize($message, false)) . ',ip_address=' . db_input($_SERVER['REMOTE_ADDR']);
-		db_query($sql, false);
 	}
 }
