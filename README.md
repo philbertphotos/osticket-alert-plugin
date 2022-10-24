@@ -2,11 +2,11 @@
 
 ==============
 
-This plugin sends alerts to users when an agent or system assigns a ticket to another agent or claims a ticket (works with filters).
+This plugin sends alerts to users when an agent or system assigns a ticket to another agent or claims a ticket (works with ticket filters).
 
 Info
 ------
-This plugin was designed/tested with osTicket-1.10.1 to 1.14.3
+This plugin was designed/tested with osTicket-1.15.3 to 1.17+
 Still in beta and has garbage code its works for me and I need others to test and let me know what updates it may need.
 
 What this plugin does is quite simple.
@@ -18,7 +18,7 @@ Ability to chose what Departments that will trigger an alert.
 ![Screenshot](Plugin-Screenshot_232.png)
 
 ## Configuration
-Create a custom Canned Response for that the system will send to the user
+Create a custom Canned Response so that the system will send the canned message to the user
 Add the custom subject
 
 ## Install
