@@ -131,7 +131,7 @@ class AssignedAgentConfig extends PluginConfig
 			array(
 				'label' => 'Subject',
 				'hint' => $__('The Subject the person will recive'),
-				'default' => "Ticket has been assigned",
+				'default' => "Ticket #%{ticket.number} has been assigned",
 				'configuration' => array(
 					'size' => 60,
 					'length' => 60
